@@ -84,7 +84,6 @@ class ShipmentPlanningRequest(BaseModel):
     vehicles: list[VehicleSpec] = Field(min_length=1)
     min_total_amount: float = Field(default=0, ge=0)
     min_fill_percent: float = Field(default=0, ge=0, le=100)
-    allow_mixed_directions: bool = False
     distribution_mode: Literal["balanced", "free", "all"] = "balanced"
     sort_by_amount: bool = True
     sort_by_volume: bool = True
@@ -124,12 +123,6 @@ class ShipmentPlanningResponse(BaseModel):
     excluded_boxes: list[PlannedBoxItem] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
     direction_summary: dict[str, int] = Field(default_factory=dict)
-
-
-class ShipmentPlannerHealthResponse(BaseModel):
-    configured: bool
-    mssql_available: bool
-    message: str
 
 
 class CsvBoxesUploadRequest(BaseModel):

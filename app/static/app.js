@@ -11,7 +11,6 @@ const vehiclePresets = {
 const state = {
   boxes: [],
   boxesSource: null,
-  plannerHealth: null,
   vehicles: [createVehicle("40ft")],
   lastPlanRequest: null,
   lastPlanResult: null,
@@ -24,14 +23,11 @@ const state = {
   excludedSortDirection: "desc",
 };
 
-const plannerHealthBadge = document.querySelector("#plannerHealthBadge");
-const plannerHealthMessage = document.querySelector("#plannerHealthMessage");
 const boxesStatus = document.querySelector("#boxesStatus");
 const boxCountBadge = document.querySelector("#boxCountBadge");
 const boxesTableBody = document.querySelector("#boxesTableBody");
 const boxSummary = document.querySelector("#boxSummary");
 const plannerForm = document.querySelector("#plannerForm");
-const loadBoxesButton = document.querySelector("#loadBoxesButton");
 const csvFileInput = document.querySelector("#csvFileInput");
 const addContainerButton = document.querySelector("#addContainerButton");
 const containerList = document.querySelector("#containerList");
@@ -461,38 +457,6 @@ async function requestJson(url, options = {}) {
   return data;
 }
 
-async function loadPlannerHealth() {
-  try {
-    const data = await requestJson("/api/shipment-planner/health");
-    state.plannerHealth = data;
-    setBadge(
-      plannerHealthBadge,
-      data.mssql_available ? "готово" : data.configured ? "нужно донастроить" : "не настроено",
-      data.mssql_available ? "success" : data.configured ? "warn" : "neutral",
-    );
-    plannerHealthMessage.textContent = data.message;
-  } catch (error) {
-    setBadge(plannerHealthBadge, "ошибка", "danger");
-    plannerHealthMessage.textContent = `Не удалось проверить подключение: ${error.message}`;
-  }
-}
-
-async function loadBoxesFromSql() {
-  loadBoxesButton.disabled = true;
-  boxesStatus.textContent = "Загружаем коробки из MS SQL...";
-  try {
-    const data = await requestJson("/api/shipment-planner/boxes");
-    state.boxes = data.boxes || [];
-    state.boxesSource = "MS SQL";
-    renderLoadedBoxes();
-    activateTab("cargoTab");
-  } catch (error) {
-    boxesStatus.textContent = `Загрузка не удалась: ${error.message}`;
-  } finally {
-    loadBoxesButton.disabled = false;
-  }
-}
-
 async function uploadCsvBoxes() {
   const file = csvFileInput.files?.[0];
   if (!file) return;
@@ -716,12 +680,10 @@ toggleExcludedRows.addEventListener("click", () => {
 });
 
 addContainerButton.addEventListener("click", addVehicle);
-loadBoxesButton.addEventListener("click", loadBoxesFromSql);
 csvFileInput.addEventListener("change", uploadCsvBoxes);
 plannerForm.addEventListener("submit", submitPlan);
 exportExcelButton.addEventListener("click", exportExcel);
 
-loadPlannerHealth();
 renderLoadedBoxes();
 renderVehicleEditors();
 renderTableSortState("selected");

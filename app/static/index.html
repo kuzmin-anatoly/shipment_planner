@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Планировщик отгрузки</title>
-    <link rel="stylesheet" href="/styles.css?v=20260602-1" />
+    <link rel="stylesheet" href="/styles.css?v=20260603-1" />
   </head>
   <body>
     <main class="layout">
@@ -30,16 +30,11 @@
           <section class="panel">
             <div class="section-head">
               <h2>Источник данных</h2>
-              <span id="plannerHealthBadge" class="badge neutral">проверка</span>
             </div>
-            <p id="plannerHealthMessage" class="muted">Проверяем подключение к MS SQL...</p>
-            <div class="source-grid">
-              <button id="loadBoxesButton" class="secondary" type="button">Загрузить коробки из MS SQL</button>
-              <label class="file-picker">
-                <span>Загрузить CSV</span>
-                <input id="csvFileInput" type="file" accept=".csv,text/csv" />
-              </label>
-            </div>
+            <label class="file-picker">
+              <span>Загрузить CSV</span>
+              <input id="csvFileInput" type="file" accept=".csv,text/csv" />
+            </label>
             <p class="muted small" id="boxesStatus">Коробки еще не загружены.</p>
           </section>
 
@@ -67,7 +62,7 @@
                 </thead>
                 <tbody id="boxesTableBody">
                   <tr>
-                    <td colspan="10" class="empty">Сначала загрузите коробки из MS SQL или CSV.</td>
+                    <td colspan="10" class="empty">Сначала загрузите CSV с коробками.</td>
                   </tr>
                 </tbody>
               </table>
@@ -227,6 +222,6 @@
         </section>
       </section>
     </main>
-    <script src="/app.js?v=20260602-1"></script>
+    <script src="/app.js?v=20260603-1"></script>
   </body>
 </html>

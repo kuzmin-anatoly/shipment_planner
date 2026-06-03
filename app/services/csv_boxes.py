@@ -18,6 +18,7 @@ CSV_COLUMNS = [
     "КодНаправления",
     "НаправлениеДоставки",
 ]
+MAX_CSV_ROWS = 50_000
 
 
 def parse_boxes_csv(content: bytes) -> list[BoxItem]:
@@ -30,6 +31,8 @@ def parse_boxes_csv(content: bytes) -> list[BoxItem]:
     for row in reader:
         if not any((value or "").strip() for value in row.values()):
             continue
+        if len(boxes) >= MAX_CSV_ROWS:
+            raise ValueError(f"CSV слишком большой. Максимум {MAX_CSV_ROWS} строк.")
         boxes.append(
             BoxItem(
                 name=(row["НаименованиеКоробки"] or "").strip(),

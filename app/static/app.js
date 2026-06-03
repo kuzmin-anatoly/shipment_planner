@@ -22,6 +22,7 @@ const state = {
   excludedSortField: "sort_score",
   excludedSortDirection: "desc",
 };
+const MAX_CSV_BYTES = 5 * 1024 * 1024;
 
 const boxesStatus = document.querySelector("#boxesStatus");
 const boxCountBadge = document.querySelector("#boxCountBadge");
@@ -460,6 +461,11 @@ async function requestJson(url, options = {}) {
 async function uploadCsvBoxes() {
   const file = csvFileInput.files?.[0];
   if (!file) return;
+  if (file.size > MAX_CSV_BYTES) {
+    boxesStatus.textContent = "CSV не загружен: файл слишком большой. Максимум 5 MB.";
+    csvFileInput.value = "";
+    return;
+  }
   boxesStatus.textContent = `Загружаем ${file.name}...`;
   const content = await file.text();
   try {

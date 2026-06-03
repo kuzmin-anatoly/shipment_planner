@@ -9,7 +9,7 @@ class Settings(BaseSettings):
 
     llm_provider: str = "ollama"
     llm_base_url: str = "http://localhost:11434"
-    llm_api_key: str = "sk-local-dev"
+    llm_api_key: str = ""
     llm_model: str = "qwen2.5:3b"
     llm_offline_fallback: bool = True
     llm_timeout_seconds: float = 180.0

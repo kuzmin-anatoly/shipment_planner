@@ -22,6 +22,7 @@ from app.services.shipment_planner import shipment_planner_service
 from app.services.xlsx_export import build_planner_workbook
 
 router = APIRouter()
+MAX_CSV_BYTES = 5 * 1024 * 1024
 
 llm_client = LLMClient()
 intent_router = IntentRouter()
@@ -62,6 +63,8 @@ async def ingest_knowledge(request: IngestRequest) -> IngestResponse:
 async def shipment_planner_boxes_upload(request: CsvBoxesUploadRequest) -> dict:
     if not request.filename.lower().endswith(".csv"):
         raise HTTPException(status_code=400, detail="Загрузите CSV файл.")
+    if len(request.content.encode("utf-8")) > MAX_CSV_BYTES:
+        raise HTTPException(status_code=413, detail="CSV слишком большой. Максимум 5 MB.")
 
     try:
         boxes = parse_boxes_csv(request.content.encode("utf-8"))

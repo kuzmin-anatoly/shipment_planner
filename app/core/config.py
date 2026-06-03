@@ -6,6 +6,8 @@ class Settings(BaseSettings):
 
     app_env: str = "local"
     app_name: str = "AI Platform MVP"
+    basic_auth_username: str = "user"
+    basic_auth_password: str = "123qweASD"
 
     llm_provider: str = "ollama"
     llm_base_url: str = "http://localhost:11434"

@@ -1,24 +1,7 @@
-from pydantic_settings import BaseSettings, SettingsConfigDict
-
-
-class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
-
-    app_env: str = "local"
-    app_name: str = "AI Platform MVP"
-
-    llm_provider: str = "ollama"
-    llm_base_url: str = "http://localhost:11434"
-    llm_api_key: str = ""
-    llm_model: str = "qwen2.5:3b"
-    llm_offline_fallback: bool = True
-    llm_timeout_seconds: float = 180.0
-    confluence_base_url: str | None = None
-    confluence_api_token: str | None = None
-    jira_base_url: str | None = None
-    jira_api_token: str | None = None
-    gitlab_base_url: str | None = None
-    gitlab_token: str | None = None
+class Settings:
+    def __init__(self) -> None:
+        self.app_env = "production"
+        self.app_name = "Shipment Planner"
 
 
 settings = Settings()

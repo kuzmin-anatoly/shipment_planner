@@ -1,69 +1,29 @@
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import Response
 
-from app.agents.analytics import AnalyticsAgent
-from app.agents.dev import DevAgent
-from app.agents.knowledge import KnowledgeAgent
-from app.core.llm import LLMClient
-from app.core.router import IntentRouter
 from app.schemas import (
-    ChatRequest,
-    ChatResponse,
-    HealthResponse,
-    IngestRequest,
-    IngestResponse,
     CsvBoxesUploadRequest,
+    HealthResponse,
     ShipmentPlanningRequest,
     ShipmentPlanningResponse,
 )
 from app.services.csv_boxes import parse_boxes_csv
-from app.services.rag import rag_service
 from app.services.shipment_planner import shipment_planner_service
 from app.services.xlsx_export import build_planner_workbook
 
 router = APIRouter()
-MAX_CSV_BYTES = 5 * 1024 * 1024
-
-llm_client = LLMClient()
-intent_router = IntentRouter()
-agents = {
-    "analytics": AnalyticsAgent(llm_client),
-    "knowledge": KnowledgeAgent(llm_client),
-    "dev": DevAgent(llm_client),
-}
 
 
 @router.get("/health", response_model=HealthResponse)
 async def health() -> HealthResponse:
-    llm_status = await llm_client.health()
-    return HealthResponse(status="ok", llm=llm_status, agents=list(agents.keys()))
-
-
-@router.post("/chat", response_model=ChatResponse)
-async def chat(request: ChatRequest) -> ChatResponse:
-    route = intent_router.route(request.message)
-    agent = agents[route.agent]
-    agent_response = await agent.run(request)
-    return ChatResponse(
-        answer=agent_response.answer,
-        intent=route.intent,
-        agent=route.agent,
-        sources=agent_response.sources,
-        artifacts=agent_response.artifacts,
-    )
-
-
-@router.post("/knowledge/ingest", response_model=IngestResponse)
-async def ingest_knowledge(request: IngestRequest) -> IngestResponse:
-    count = rag_service.ingest_texts(request.source, request.documents)
-    return IngestResponse(indexed=count)
+    return HealthResponse(status="ok")
 
 
 @router.post("/shipment-planner/boxes/upload")
 async def shipment_planner_boxes_upload(request: CsvBoxesUploadRequest) -> dict:
     if not request.filename.lower().endswith(".csv"):
         raise HTTPException(status_code=400, detail="Загрузите CSV файл.")
-    if len(request.content.encode("utf-8")) > MAX_CSV_BYTES:
+    if len(request.content.encode("utf-8")) > 5 * 1024 * 1024:
         raise HTTPException(status_code=413, detail="CSV слишком большой. Максимум 5 MB.")
 
     try:
@@ -94,7 +54,7 @@ def _build_plan_or_raise(request: ShipmentPlanningRequest) -> ShipmentPlanningRe
         sort_by_amount=request.sort_by_amount,
         sort_by_volume=request.sort_by_volume,
         sort_by_weight=request.sort_by_weight,
-        source="request",
+        source="shipment_planner",
     )
 
 

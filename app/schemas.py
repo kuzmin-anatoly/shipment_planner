@@ -3,50 +3,8 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 
-class ChatMessage(BaseModel):
-    role: str
-    content: str
-
-
-class ChatRequest(BaseModel):
-    message: str = Field(min_length=1)
-    channel: str = "web"
-    history: list[ChatMessage] = Field(default_factory=list)
-
-
-class AgentResponse(BaseModel):
-    answer: str
-    sources: list[str] = Field(default_factory=list)
-    artifacts: list[dict] = Field(default_factory=list)
-
-
-class ChatResponse(BaseModel):
-    answer: str
-    intent: str
-    agent: str
-    sources: list[str] = Field(default_factory=list)
-    artifacts: list[dict] = Field(default_factory=list)
-
-
 class HealthResponse(BaseModel):
     status: str
-    llm: dict
-    agents: list[str]
-
-
-class KnowledgeDocument(BaseModel):
-    title: str
-    content: str
-    metadata: dict = Field(default_factory=dict)
-
-
-class IngestRequest(BaseModel):
-    source: str = "manual"
-    documents: list[KnowledgeDocument]
-
-
-class IngestResponse(BaseModel):
-    indexed: int
 
 
 class BoxItem(BaseModel):

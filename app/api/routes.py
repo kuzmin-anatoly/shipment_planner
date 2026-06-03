@@ -85,6 +85,7 @@ def _build_plan_or_raise(request: ShipmentPlanningRequest) -> ShipmentPlanningRe
         vehicles=request.vehicles,
         min_total_amount=request.min_total_amount,
         min_fill_percent=request.min_fill_percent,
+        max_fill_percent=request.max_fill_percent,
         allow_mixed_directions=False,
         distribution_mode=request.distribution_mode,
         sort_by_amount=request.sort_by_amount,

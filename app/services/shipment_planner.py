@@ -67,6 +67,7 @@ class ShipmentPlannerService:
         sort_by_volume: bool,
         sort_by_weight: bool,
         source: str,
+        max_fill_percent: float = 95,
     ) -> ShipmentPlanningResponse:
         if not boxes:
             return ShipmentPlanningResponse(
@@ -99,6 +100,7 @@ class ShipmentPlannerService:
                 vehicles=vehicles,
                 min_total_amount=min_total_amount,
                 min_fill_percent=min_fill_percent,
+                max_fill_percent=max_fill_percent,
                 source=source,
             )
         if distribution_mode == "balanced":
@@ -107,6 +109,7 @@ class ShipmentPlannerService:
                 vehicles=vehicles,
                 min_total_amount=min_total_amount,
                 min_fill_percent=min_fill_percent,
+                max_fill_percent=max_fill_percent,
                 allow_mixed_directions=allow_mixed_directions,
                 source=source,
             )
@@ -115,6 +118,7 @@ class ShipmentPlannerService:
             vehicles=vehicles,
             min_total_amount=min_total_amount,
             min_fill_percent=min_fill_percent,
+            max_fill_percent=max_fill_percent,
             allow_mixed_directions=allow_mixed_directions,
             source=source,
         )
@@ -125,6 +129,7 @@ class ShipmentPlannerService:
         vehicles: list[VehicleSpec],
         min_total_amount: float,
         min_fill_percent: float,
+        max_fill_percent: float,
         source: str,
     ) -> ShipmentPlanningResponse:
         selected_boxes = [item.planned for item in sorted(scored_boxes, key=self._sort_priority, reverse=True)]
@@ -233,6 +238,7 @@ class ShipmentPlannerService:
         vehicles: list[VehicleSpec],
         min_total_amount: float,
         min_fill_percent: float,
+        max_fill_percent: float,
         allow_mixed_directions: bool,
         source: str,
     ) -> ShipmentPlanningResponse:
@@ -255,7 +261,7 @@ class ShipmentPlannerService:
         ordered_boxes = sorted(distributable, key=self._sort_priority, reverse=True)
         unassigned: list[ScoredBox] = []
         for item in ordered_boxes:
-            candidates = [state for state in states if self._can_place_box(state, item)]
+            candidates = [state for state in states if self._can_place_box(state, item, max_fill_percent)]
             if not candidates:
                 unassigned.append(item)
                 continue
@@ -270,6 +276,7 @@ class ShipmentPlannerService:
             leftover=unassigned,
             min_total_amount=min_total_amount,
             min_fill_percent=min_fill_percent,
+            max_fill_percent=max_fill_percent,
             distribution_mode="balanced",
             source=source,
         )
@@ -280,6 +287,7 @@ class ShipmentPlannerService:
         vehicles: list[VehicleSpec],
         min_total_amount: float,
         min_fill_percent: float,
+        max_fill_percent: float,
         allow_mixed_directions: bool,
         source: str,
     ) -> ShipmentPlanningResponse:
@@ -296,6 +304,7 @@ class ShipmentPlannerService:
                     vehicle=vehicle,
                     min_total_amount=min_total_amount,
                     min_fill_percent=min_fill_percent,
+                    max_fill_percent=max_fill_percent,
                     allow_mixed_directions=allow_mixed_directions,
                 )
                 if candidate.selected:
@@ -323,6 +332,7 @@ class ShipmentPlannerService:
             leftover=leftover,
             min_total_amount=min_total_amount,
             min_fill_percent=min_fill_percent,
+            max_fill_percent=max_fill_percent,
             distribution_mode="free",
             source=source,
         )
@@ -334,6 +344,7 @@ class ShipmentPlannerService:
         leftover: list[ScoredBox],
         min_total_amount: float,
         min_fill_percent: float,
+        max_fill_percent: float,
         distribution_mode: str,
         source: str,
     ) -> ShipmentPlanningResponse:
@@ -351,6 +362,7 @@ class ShipmentPlannerService:
                 metrics.total_boxes > 0
                 and metrics.total_amount >= min_total_amount
                 and metrics.fill_percent >= min_fill_percent
+                and metrics.fill_percent <= max_fill_percent
             )
             plan_warnings: list[str] = []
             if metrics.total_boxes == 0:
@@ -359,6 +371,8 @@ class ShipmentPlannerService:
                 plan_warnings.append("Контейнер не достиг минимальной стоимости.")
             if metrics.total_boxes > 0 and metrics.fill_percent < min_fill_percent:
                 plan_warnings.append("Контейнер не достиг минимальной загрузки.")
+            if metrics.total_boxes > 0 and metrics.fill_percent > max_fill_percent:
+                plan_warnings.append("Контейнер превысил максимальную загрузку.")
             plans.append(
                 ContainerPlan(
                     container_no=state.container_no,
@@ -403,9 +417,10 @@ class ShipmentPlannerService:
         vehicle: VehicleSpec,
         min_total_amount: float,
         min_fill_percent: float,
+        max_fill_percent: float,
         allow_mixed_directions: bool,
     ) -> PlanningCandidate:
-        return self._build_candidate(fitting_boxes, vehicle, min_total_amount, min_fill_percent, [])
+        return self._build_candidate(fitting_boxes, vehicle, min_total_amount, min_fill_percent, max_fill_percent, [])
 
     def _build_best_direction_candidate(
         self,
@@ -413,6 +428,7 @@ class ShipmentPlannerService:
         vehicle: VehicleSpec,
         min_total_amount: float,
         min_fill_percent: float,
+        max_fill_percent: float,
         used_directions: set[str],
     ) -> PlanningCandidate:
         ranked_candidates: list[tuple[tuple[int, int, float, float, float], PlanningCandidate]] = []
@@ -424,6 +440,7 @@ class ShipmentPlannerService:
                 vehicle,
                 min_total_amount,
                 min_fill_percent,
+                max_fill_percent,
                 [],
                 other,
             )
@@ -440,26 +457,29 @@ class ShipmentPlannerService:
         vehicle: VehicleSpec,
         min_total_amount: float,
         min_fill_percent: float,
+        max_fill_percent: float,
         warnings: list[str],
         excluded_seed: list[ScoredBox] | None = None,
     ) -> PlanningCandidate:
         ordered = sorted(boxes, key=self._sort_priority, reverse=True)
-        selected, excluded = self._greedy_pick(ordered, vehicle)
-        improved = self._fill_remaining_capacity(selected, boxes, vehicle)
-        improved_rank = self._selection_rank(improved, vehicle, min_total_amount, min_fill_percent)
-        selected_rank = self._selection_rank(selected, vehicle, min_total_amount, min_fill_percent)
+        selected, excluded = self._greedy_pick(ordered, vehicle, max_fill_percent)
+        improved = self._fill_remaining_capacity(selected, boxes, vehicle, max_fill_percent)
+        improved_rank = self._selection_rank(improved, vehicle, min_total_amount, min_fill_percent, max_fill_percent)
+        selected_rank = self._selection_rank(selected, vehicle, min_total_amount, min_fill_percent, max_fill_percent)
         if improved_rank > selected_rank:
             selected = improved
             excluded = [item for item in boxes if item not in improved]
         return PlanningCandidate(selected=selected, excluded=list(excluded_seed or []) + excluded, warnings=warnings, vehicle=vehicle)
 
-    def _greedy_pick(self, boxes: list[ScoredBox], vehicle: VehicleSpec) -> tuple[list[ScoredBox], list[ScoredBox]]:
+    def _greedy_pick(self, boxes: list[ScoredBox], vehicle: VehicleSpec, max_fill_percent: float) -> tuple[list[ScoredBox], list[ScoredBox]]:
         selected: list[ScoredBox] = []
         excluded: list[ScoredBox] = []
         total_volume = 0.0
         total_weight = 0.0
         for item in boxes:
-            if total_volume + item.box.volume <= vehicle.max_volume and total_weight + item.box.weight <= vehicle.max_weight:
+            next_volume = total_volume + item.box.volume
+            next_fill = (next_volume / vehicle.max_volume * 100) if vehicle.max_volume else 0
+            if next_volume <= vehicle.max_volume and total_weight + item.box.weight <= vehicle.max_weight and next_fill <= max_fill_percent:
                 selected.append(item)
                 total_volume += item.box.volume
                 total_weight += item.box.weight
@@ -467,7 +487,7 @@ class ShipmentPlannerService:
                 excluded.append(item)
         return selected, excluded
 
-    def _fill_remaining_capacity(self, selected: list[ScoredBox], boxes: list[ScoredBox], vehicle: VehicleSpec) -> list[ScoredBox]:
+    def _fill_remaining_capacity(self, selected: list[ScoredBox], boxes: list[ScoredBox], vehicle: VehicleSpec, max_fill_percent: float) -> list[ScoredBox]:
         selected_ids = {id(item.box) for item in selected}
         total_volume = sum(item.box.volume for item in selected)
         total_weight = sum(item.box.weight for item in selected)
@@ -478,7 +498,9 @@ class ShipmentPlannerService:
             reverse=True,
         )
         for item in remainder:
-            if total_volume + item.box.volume <= vehicle.max_volume and total_weight + item.box.weight <= vehicle.max_weight:
+            next_volume = total_volume + item.box.volume
+            next_fill = (next_volume / vehicle.max_volume * 100) if vehicle.max_volume else 0
+            if next_volume <= vehicle.max_volume and total_weight + item.box.weight <= vehicle.max_weight and next_fill <= max_fill_percent:
                 improved.append(item)
                 total_volume += item.box.volume
                 total_weight += item.box.weight
@@ -539,12 +561,16 @@ class ShipmentPlannerService:
             return True
         return vehicle_direction == self._normalized_direction(box.direction)
 
-    def _can_place_box(self, state: ContainerState, item: ScoredBox) -> bool:
+    def _can_place_box(self, state: ContainerState, item: ScoredBox, max_fill_percent: float) -> bool:
         if not self._vehicle_accepts_box(state.vehicle, item.box):
             return False
-        if state.total_volume + item.box.volume > state.vehicle.max_volume:
+        next_volume = state.total_volume + item.box.volume
+        next_fill = (next_volume / state.vehicle.max_volume * 100) if state.vehicle.max_volume else 0
+        if next_volume > state.vehicle.max_volume:
             return False
         if state.total_weight + item.box.weight > state.vehicle.max_weight:
+            return False
+        if next_fill > max_fill_percent:
             return False
         return state.assigned_direction in (None, item.box.direction)
 
@@ -553,13 +579,18 @@ class ShipmentPlannerService:
         weight_ratio = state.total_weight / state.vehicle.max_weight if state.vehicle.max_weight else 0
         return volume_ratio + weight_ratio, state.total_amount, len(state.selected_boxes), state.container_no
 
-    def _selection_rank(self, selected: list[ScoredBox], vehicle: VehicleSpec, min_total_amount: float, min_fill_percent: float) -> tuple[int, float, float, float]:
+    def _selection_rank(self, selected: list[ScoredBox], vehicle: VehicleSpec, min_total_amount: float, min_fill_percent: float, max_fill_percent: float) -> tuple[int, float, float, float]:
         metrics = self.metrics_for_boxes([item.planned for item in selected], vehicle.max_volume, vehicle.max_weight)
-        valid = int(metrics.total_boxes > 0 and metrics.total_amount >= min_total_amount and metrics.fill_percent >= min_fill_percent)
+        valid = int(
+            metrics.total_boxes > 0
+            and metrics.total_amount >= min_total_amount
+            and metrics.fill_percent >= min_fill_percent
+            and metrics.fill_percent <= max_fill_percent
+        )
         return valid, metrics.total_amount, metrics.fill_percent, -metrics.total_weight
 
-    def _candidate_rank(self, candidate: PlanningCandidate, min_total_amount: float, min_fill_percent: float) -> tuple[int, float, float, float]:
-        return self._selection_rank(candidate.selected, candidate.vehicle, min_total_amount, min_fill_percent)
+    def _candidate_rank(self, candidate: PlanningCandidate, min_total_amount: float, min_fill_percent: float, max_fill_percent: float) -> tuple[int, float, float, float]:
+        return self._selection_rank(candidate.selected, candidate.vehicle, min_total_amount, min_fill_percent, max_fill_percent)
 
     def _base_warnings(self, oversized_boxes: list[ScoredBox]) -> list[str]:
         if not oversized_boxes:

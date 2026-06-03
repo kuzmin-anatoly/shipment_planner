@@ -83,7 +83,8 @@ class VehicleSpec(BaseModel):
 class ShipmentPlanningRequest(BaseModel):
     vehicles: list[VehicleSpec] = Field(min_length=1)
     min_total_amount: float = Field(default=0, ge=0)
-    min_fill_percent: float = Field(default=0, ge=0, le=100)
+    min_fill_percent: float = Field(default=75, ge=0, le=100)
+    max_fill_percent: float = Field(default=95, ge=0, le=100)
     distribution_mode: Literal["balanced", "free", "all"] = "balanced"
     sort_by_amount: bool = True
     sort_by_volume: bool = True

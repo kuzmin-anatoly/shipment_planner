@@ -505,6 +505,7 @@ function collectPlanningPayload() {
     })),
     min_total_amount: Number(document.querySelector("#minTotalAmount").value),
     min_fill_percent: Number(document.querySelector("#minFillPercent").value),
+    max_fill_percent: Number(document.querySelector("#maxFillPercent").value),
     distribution_mode: allMode ? "all" : (document.querySelector("#balancedDistribution").checked ? "balanced" : "free"),
     sort_by_amount: sortByAmount.checked,
     sort_by_volume: sortByVolume.checked,

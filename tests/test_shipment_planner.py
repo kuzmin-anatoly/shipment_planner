@@ -316,6 +316,30 @@ def test_container_metrics_include_weight_percent() -> None:
     assert result.container_plans[0].metrics.weight_percent == 75
 
 
+def test_max_fill_percent_limits_container_loading() -> None:
+    boxes = [
+        BoxItem(name="A", amount=500, volume=5, length=1, width=1, height=1, weight=50, direction="SEA"),
+        BoxItem(name="B", amount=500, volume=5, length=1, width=1, height=1, weight=50, direction="SEA"),
+    ]
+
+    result = shipment_planner_service.build_plan(
+        boxes=boxes,
+        vehicles=[make_vehicle(volume=10, weight=500)],
+        min_total_amount=0,
+        min_fill_percent=0,
+        max_fill_percent=50,
+        allow_mixed_directions=True,
+        distribution_mode="balanced",
+        sort_by_amount=True,
+        sort_by_volume=True,
+        sort_by_weight=True,
+        source="test",
+    )
+
+    assert result.container_plans[0].metrics.fill_percent <= 50
+    assert len(result.selected_boxes) == 1
+
+
 def test_all_mode_returns_sorted_boxes_without_container_split() -> None:
     boxes = [
         BoxItem(name="Low", amount=100, volume=1, length=1, width=1, height=1, weight=10, direction="SEA"),

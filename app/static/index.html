@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Планировщик отгрузки</title>
+    <link rel="stylesheet" href="/styles.css?v=20260602-1" />
+  </head>
+  <body>
+    <main class="layout">
+      <aside class="sidebar">
+        <div>
+          <p class="eyebrow">Shipment Planner</p>
+          <h1>Подбор партии для отгрузки</h1>
+          <p class="lead">
+            Планировщик загружает коробки, позволяет собрать пул контейнеров и
+            распределяет всю партию между ними в режиме равномерной или свободной загрузки.
+          </p>
+        </div>
+      </aside>
+
+      <section class="workspace">
+        <nav class="tabs" aria-label="Разделы планировщика">
+          <button class="tab is-active" type="button" data-tab-target="cargoTab">Cargo boxes</button>
+          <button class="tab" type="button" data-tab-target="containersTab">Containers</button>
+          <button class="tab" type="button" data-tab-target="resultsTab">Results</button>
+        </nav>
+
+        <section id="cargoTab" class="tab-panel is-active">
+          <section class="panel">
+            <div class="section-head">
+              <h2>Источник данных</h2>
+              <span id="plannerHealthBadge" class="badge neutral">проверка</span>
+            </div>
+            <p id="plannerHealthMessage" class="muted">Проверяем подключение к MS SQL...</p>
+            <div class="source-grid">
+              <button id="loadBoxesButton" class="secondary" type="button">Загрузить коробки из MS SQL</button>
+              <label class="file-picker">
+                <span>Загрузить CSV</span>
+                <input id="csvFileInput" type="file" accept=".csv,text/csv" />
+              </label>
+            </div>
+            <p class="muted small" id="boxesStatus">Коробки еще не загружены.</p>
+          </section>
+
+          <section class="panel">
+            <div class="section-head">
+              <h2>Все загруженные коробки</h2>
+              <span id="boxCountBadge" class="badge neutral">0</span>
+            </div>
+            <div id="boxSummary" class="summary-strip muted">Нет данных.</div>
+            <div class="table-wrap tall">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Коробка</th>
+                    <th>Контрагент</th>
+                    <th>КодНаправления</th>
+                    <th>Направление</th>
+                    <th>Сумма</th>
+                    <th>Объем</th>
+                    <th>Вес</th>
+                    <th>Длина</th>
+                    <th>Ширина</th>
+                    <th>Высота</th>
+                  </tr>
+                </thead>
+                <tbody id="boxesTableBody">
+                  <tr>
+                    <td colspan="10" class="empty">Сначала загрузите коробки из MS SQL или CSV.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+
+        <section id="containersTab" class="tab-panel">
+          <section class="panel">
+            <div class="section-head">
+              <h2>Общие параметры формирования партий</h2>
+              <span class="badge accent">Rules</span>
+            </div>
+            <form id="plannerForm" class="planner-form">
+              <div class="grid two">
+                <label>
+                  <span>Мин. стоимость партии</span>
+                  <input id="minTotalAmount" type="number" min="0" step="0.01" value="0" />
+                </label>
+                <label>
+                  <span>Мин. загрузка, %</span>
+                  <input id="minFillPercent" type="number" min="0" max="100" step="0.1" value="60" />
+                </label>
+              </div>
+
+              <div class="toggles">
+                <div>
+                  <label class="toggle-row">
+                    <input id="balancedDistribution" type="checkbox" checked />
+                    <span>Равномерно распределять по контейнерам</span>
+                  </label>
+                  <div class="inline-note">
+                    При включенной галке используется `Balanced`: общий пул коробок раскладывается по контейнерам максимально ровно.
+                    При выключенной галке используется `Free`: контейнеры заполняются последовательно с упором на эффективность загрузки.
+                  </div>
+                </div>
+              </div>
+
+              <section class="sort-settings">
+                <div class="section-head compact-head">
+                  <h3>Сортировка с учетом</h3>
+                  <span class="badge accent">Sort score</span>
+                </div>
+                <div class="grid three">
+                  <label class="toggle-row">
+                    <input id="sortByAmount" type="checkbox" checked />
+                    <span>стоимость</span>
+                  </label>
+                  <label class="toggle-row">
+                    <input id="sortByVolume" type="checkbox" checked />
+                    <span>объем</span>
+                  </label>
+                  <label class="toggle-row">
+                    <input id="sortByWeight" type="checkbox" checked />
+                    <span>вес</span>
+                  </label>
+                </div>
+              </section>
+
+              <div class="actions">
+                <button id="planButton" type="submit">Распределить</button>
+              </div>
+            </form>
+          </section>
+
+          <section class="panel">
+            <div class="section-head">
+              <h2>Доступные контейнеры</h2>
+              <button id="addContainerButton" class="icon-button" type="button" title="Добавить контейнер">+</button>
+            </div>
+            <div id="containerList" class="container-editor-list"></div>
+          </section>
+        </section>
+
+        <section id="resultsTab" class="tab-panel">
+          <section class="panel full-width-panel">
+            <div class="section-head">
+              <h2>Итоги подбора</h2>
+              <div class="inline-actions">
+                <span id="planStatusBadge" class="badge neutral">ожидание</span>
+                <button id="exportExcelButton" class="secondary" type="button">Export to Excel</button>
+              </div>
+            </div>
+            <div id="planWarnings" class="warnings"></div>
+            <div id="metricsCards" class="cards wide-cards"></div>
+            <div id="directionSummary" class="summary-strip muted">Результат пока не рассчитан.</div>
+          </section>
+
+          <section class="panel">
+            <div class="section-head">
+              <h2>Контейнеры результата</h2>
+              <span id="selectedCountBadge" class="badge success">0</span>
+            </div>
+            <div id="containerPlans" class="container-plans"></div>
+          </section>
+
+          <section class="grid-panels">
+            <section class="panel full-span-panel">
+              <div class="section-head">
+                <h2>Коробки выбранного контейнера</h2>
+                <div class="inline-actions wrap-actions">
+                  <button id="toggleSelectedRows" class="secondary" type="button">Показать все</button>
+                  <span id="activeContainerBadge" class="badge neutral">не выбран</span>
+                </div>
+              </div>
+              <div class="table-wrap">
+                <table id="selectedTable">
+                  <thead>
+                    <tr>
+                      <th class="sortable" data-table-sort="selected" data-sort-field="name">Коробка <button class="column-sort" type="button" aria-label="Sort by name"></button></th>
+                      <th class="sortable" data-table-sort="selected" data-sort-field="contractor">Контрагент <button class="column-sort" type="button" aria-label="Sort by contractor"></button></th>
+                      <th class="sortable" data-table-sort="selected" data-sort-field="direction_code">КодНаправления <button class="column-sort" type="button" aria-label="Sort by direction code"></button></th>
+                      <th class="sortable" data-table-sort="selected" data-sort-field="direction">Направление <button class="column-sort" type="button" aria-label="Sort by direction"></button></th>
+                      <th class="sortable" data-table-sort="selected" data-sort-field="amount">Сумма <button class="column-sort" type="button" aria-label="Sort by amount"></button></th>
+                      <th class="sortable" data-table-sort="selected" data-sort-field="volume">Объем <button class="column-sort" type="button" aria-label="Sort by volume"></button></th>
+                      <th class="sortable" data-table-sort="selected" data-sort-field="weight">Вес <button class="column-sort" type="button" aria-label="Sort by weight"></button></th>
+                      <th class="sortable" data-table-sort="selected" data-sort-field="sort_score">Sort score <button class="column-sort" type="button" aria-label="Sort by sort score"></button></th>
+                    </tr>
+                  </thead>
+                  <tbody id="selectedTableBody">
+                    <tr>
+                      <td colspan="8" class="empty">Выберите контейнер из результата.</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </section>
+
+            <section class="panel full-span-panel">
+              <div class="section-head">
+                <h2>Коробки вне плана</h2>
+                <div class="inline-actions wrap-actions">
+                  <button id="toggleExcludedRows" class="secondary" type="button">Показать все</button>
+                  <span id="excludedCountBadge" class="badge neutral">0</span>
+                </div>
+              </div>
+              <div class="table-wrap">
+                <table id="excludedTable">
+                  <thead>
+                    <tr>
+                      <th class="sortable" data-table-sort="excluded" data-sort-field="name">Коробка <button class="column-sort" type="button" aria-label="Sort by name"></button></th>
+                      <th class="sortable" data-table-sort="excluded" data-sort-field="direction">Направление <button class="column-sort" type="button" aria-label="Sort by direction"></button></th>
+                      <th class="sortable" data-table-sort="excluded" data-sort-field="amount">Сумма <button class="column-sort" type="button" aria-label="Sort by amount"></button></th>
+                      <th class="sortable" data-table-sort="excluded" data-sort-field="volume">Объем <button class="column-sort" type="button" aria-label="Sort by volume"></button></th>
+                      <th class="sortable" data-table-sort="excluded" data-sort-field="weight">Вес <button class="column-sort" type="button" aria-label="Sort by weight"></button></th>
+                    </tr>
+                  </thead>
+                  <tbody id="excludedTableBody">
+                    <tr>
+                      <td colspan="5" class="empty">Исключения будут показаны после расчета.</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          </section>
+        </section>
+      </section>
+    </main>
+    <script src="/app.js?v=20260602-1"></script>
+  </body>
+</html>

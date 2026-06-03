@@ -1,0 +1,12 @@
+.env
+.pytest_cache/
+pytest-cache-files-*/
+__pycache__/
+*.py[cod]
+.ruff_cache/
+.venv/
+venv/
+htmlcov/
+.coverage
+downloads/
+*.exe
